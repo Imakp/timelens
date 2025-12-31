@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model UserSettings {
+  id                     String   @id @default(cuid())
+  defaultIntervalMinutes Int      @default(15)
+  defaultStartTime       String   @default("06:00")
+  defaultEndTime         String   @default("23:00")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model ProductivityCategory {
+  id          String   @id @default(cuid())
+  label       String
+  value       Int      // 0-100 score
+  color       String   // Hex code
+  icon        String?  // Icon identifier (e.g., "zap", "coffee")
+  description String?
+  sortOrder   Int      @default(0)
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  intervals TimeInterval[]
+}
+
+model ConfigurationTemplate {
+  id              String   @id @default(cuid())
+  name            String   // "Weekday", "Weekend", "Night Shift"
+  intervalMinutes Int
+  startTime       String
+  endTime         String
+  createdAt       DateTime @default(now())
+}
+
+model DailyLog {
+  id              String    @id @default(cuid())
+  date            DateTime  @unique // Date only (stored as midnight UTC)
+  intervalMinutes Int
+  startTime       String    // "09:00" format
+  endTime         String    // "17:00" format
+  status          String    @default("ACTIVE") // ACTIVE, CLOSED, REOPENED
+  isPartial       Boolean   @default(false)
+  daySummary      String?   // Optional end-of-day reflection
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  intervals TimeInterval[]
+}
+
+model TimeInterval {
+  id           String    @id @default(cuid())
+  dailyLogId   String
+  startTime    DateTime  // Interval start timestamp
+  endTime      DateTime  // Interval end timestamp
+  activityText String?   // Max 100 chars, user's log entry
+  loggedAt     DateTime? // When the entry was actually recorded
+  categoryId   String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  dailyLog DailyLog              @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+  category ProductivityCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([dailyLogId])
+  @@index([categoryId])
+}
